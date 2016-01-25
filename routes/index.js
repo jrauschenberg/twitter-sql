@@ -28,7 +28,6 @@ module.exports = function makeRouterWithSockets (io) {
       {where: { name : req.params.username },
       include: [models.Tweet]
     }).then(function(user) {
-      console.log(user.Tweets);
       for (var i=0; i<user.Tweets.length; i++) {
         user.Tweets[i].User = {};
         user.Tweets[i].User.name = req.params.username;
@@ -48,7 +47,6 @@ module.exports = function makeRouterWithSockets (io) {
       {where: { id : req.params.id },
       include: [models.User]
     }).then(function(tweet) {
-      console.log(tweet.tweet);
       res.render('index', {
       title: 'Twitter.js',
       tweets: [tweet],
@@ -59,10 +57,19 @@ module.exports = function makeRouterWithSockets (io) {
 
   // create a new tweet
   router.post('/tweets', function(req, res, next){
-    models.Tweet.create({ name: req.body.name, text: req.body.text})
-    .then(function(newTweet) {console.log(newTweet)});
-    io.sockets.emit('new_tweet', newTweet);
+    models.User.findOrCreate({
+      where: {name : req.body.name}
+    // left with user id if created or found
+    }).then(function (user) {
+    console.log(JSON.stringify(user));
+      models.Tweet.create({
+    // need to make sure that the fields are the same (check database)
+        where : { UserId: user.id, tweet: req.body.text}
+      })
     res.redirect('/');
+    })
+    var newTweet = {name: req.body.name, tweet: req.body.text};
+    io.sockets.emit('new_tweet', newTweet);
   });
 
   // // replaced this hard-coded route with general static routing in app.js
