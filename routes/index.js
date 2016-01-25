@@ -2,16 +2,19 @@
 var express = require('express');
 var router = express.Router();
 var tweetBank = require('../tweetBank');
+var models = require('../models')
 
 module.exports = function makeRouterWithSockets (io) {
 
   // a reusable function
   function respondWithAllTweets (req, res, next){
-    var allTheTweets = tweetBank.list();
-    res.render('index', {
+    models.Tweet.findAll({ include: [models.User]})
+    .then(function(tweets) {
+      res.render('index', {
       title: 'Twitter.js',
-      tweets: allTheTweets,
+      tweets: tweets,
       showForm: true
+    })
     });
   }
 
@@ -21,27 +24,43 @@ module.exports = function makeRouterWithSockets (io) {
 
   // single-user page
   router.get('/users/:username', function(req, res, next){
-    var tweetsForName = tweetBank.find({ name: req.params.username });
-    res.render('index', {
+    models.User.findOne(
+      {where: { name : req.params.username },
+      include: [models.Tweet]
+    }).then(function(user) {
+      console.log(user.Tweets);
+      for (var i=0; i<user.Tweets.length; i++) {
+        user.Tweets[i].User = {};
+        user.Tweets[i].User.name = req.params.username;
+      }
+      res.render('index', {
       title: 'Twitter.js',
-      tweets: tweetsForName,
+      tweets: user.Tweets,
       showForm: true,
       username: req.params.username
+      })
     });
   });
 
   // single-tweet page
   router.get('/tweets/:id', function(req, res, next){
-    var tweetsWithThatId = tweetBank.find({ id: Number(req.params.id) });
-    res.render('index', {
+    models.Tweet.findOne(
+      {where: { id : req.params.id },
+      include: [models.User]
+    }).then(function(tweet) {
+      console.log(tweet.tweet);
+      res.render('index', {
       title: 'Twitter.js',
-      tweets: tweetsWithThatId // an array of only one element ;-)
+      tweets: [tweet],
+      showForm: true
+      })
     });
   });
 
   // create a new tweet
   router.post('/tweets', function(req, res, next){
-    var newTweet = tweetBank.add(req.body.name, req.body.text);
+    models.Tweet.create({ name: req.body.name, text: req.body.text})
+    .then(function(newTweet) {console.log(newTweet)});
     io.sockets.emit('new_tweet', newTweet);
     res.redirect('/');
   });

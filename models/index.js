@@ -29,9 +29,4 @@ module.exports = {
     Tweet: Tweet
 };
 
-User.findOne()
-.then(function (user) {
-    // big old crazy object, but no name or 
-    // id anywhere in there
-    console.log(user.name); 
-});
+
